@@ -56,3 +56,6 @@ dkms.conf
 
 # build folders
 build/
+
+# ML models folders
+models/
