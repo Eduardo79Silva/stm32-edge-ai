@@ -59,3 +59,15 @@ build/
 
 # ML models folders
 models/
+
+# STM32CubeIDE generated / vendor files
+firmware/Drivers/
+Drivers/
+*.ioc.bak
+Debug/
+Release/
+*.elf
+*.bin
+*.hex
+*.map
+*.list
