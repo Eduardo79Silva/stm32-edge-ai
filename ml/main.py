@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -11,6 +13,7 @@ VAL_RATIO = 0.1  # 10% validation data
 
 # Model configuration
 MODEL_FILE_NAME = "sine_model"
+MODEL_FILE_DIR = "../models/"
 C_HEADER_DIR = "../models/"  # Output directory for generated files
 PI = np.pi  # Using numpy's more precise constant
 
@@ -97,15 +100,19 @@ def main():
     plt.show()
 
     # Save Keras model
-    sine_model.save("sine_model.keras")
+    sine_model.save(f"{MODEL_FILE_DIR}sine_model.keras")
 
     # Convert to TensorFlow Lite
     converter = tf.lite.TFLiteConverter.from_keras_model(sine_model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     sine_tflite_model = converter.convert()
 
+    # Create model path if it does not exist
+    if not os.path.isdir(MODEL_FILE_DIR):
+        os.makedirs(MODEL_FILE_DIR)
+
     # Save as .tflite file
-    with open(f"{MODEL_FILE_NAME}.tflite", "wb") as file:
+    with open(f"{MODEL_FILE_DIR}{MODEL_FILE_NAME}.tflite", "wb") as file:
         file.write(sine_tflite_model)
 
     # Breaking the byte in several lines to fit better in the c header file
@@ -113,6 +120,10 @@ def main():
         [format(hex_value, "#04x") for hex_value in sine_tflite_model],
         len(sine_tflite_model) // 8,
     )
+
+    # Create model path if it does not exist
+    if not os.path.isdir(C_HEADER_DIR):
+        os.makedirs(C_HEADER_DIR)
 
     # Write TfLite model to a C header file
     open(f"{C_HEADER_DIR}{MODEL_FILE_NAME.lower()}.h", "w").write(f"""
@@ -128,7 +139,7 @@ def main():
 #endif // {MODEL_FILE_NAME.upper()}_H
     """)
 
-    interpreter = tf.lite.Interpreter(model_path=f"{MODEL_FILE_NAME}.tflite")
+    interpreter = tf.lite.Interpreter(model_path=f"{MODEL_FILE_DIR}{MODEL_FILE_NAME}.tflite")
     interpreter.allocate_tensors()
 
     # Get input and output tensors
