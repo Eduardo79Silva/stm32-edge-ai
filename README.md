@@ -14,23 +14,6 @@ The initial project is a sine wave approximator: a small dense network trained i
 | SRAM | 128 KB |
 | Interface | UART2 via USB (ST-LINK, 115200 baud) |
 
-## Repository Structure
-
-```
-stm32-edge-ai/
-├── firmware/               # STM32CubeIDE project (HAL-based)
-│   └── Core/
-│       └── Src/
-│           └── main.c      # Entry point, GPIO/UART init, EXTI callback
-├── ml/
-│   └── main.py             # Model training, TFLite conversion, C header export
-├── models/                 # Generated model artefacts (ignored by git by default)
-│   ├── sine_model.keras
-│   ├── sine_model.tflite
-│   └── sine_model.h        # C header for embedding in firmware
-└── README.md
-```
-
 ## Projects
 
 ### 1. Sine Wave Approximator
