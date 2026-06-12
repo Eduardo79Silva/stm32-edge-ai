@@ -21,6 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
+
 #include "sine_model.h"
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/kernels/internal/compatibility.h"
@@ -89,6 +91,9 @@ static void MX_TIM2_Init(void);
 int main(void) {
 
   /* USER CODE BEGIN 1 */
+  float input = 0.0f;
+
+  float increment = 0.05f;
 
   /* USER CODE END 1 */
 
@@ -125,11 +130,27 @@ int main(void) {
   tflite::MicroInterpreter interpreter(model, op_resolver, tensor_arena,
                                        kTensorArenaSize);
   TF_LITE_ENSURE_STATUS(interpreter.AllocateTensors());
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
+    if (input >= 2 * M_PI)
+      input = 0;
+
+    interpreter.input(0)->data.f[0] = input;
+
+    TF_LITE_ENSURE_STATUS(interpreter.Invoke());
+    float y_pred = interpreter.output(0)->data.f[0];
+
+    float y_clamp = (y_pred + 1) / 2;
+    float pwm = 999 * y_clamp;
+
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (uint32_t)pwm);
+    HAL_Delay(10);
+
+    input += increment;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
