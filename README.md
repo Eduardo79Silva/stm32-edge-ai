@@ -24,6 +24,20 @@ A 3-layer dense network (`32 → 16 → 1`, ReLU activations) trained on noisy `
 2. Serialized as a C byte array in `sine_model.h`
 3. Linked into the firmware and executed via the TFLite Micro interpreter
 
+<div align="center">
+  <p align="center">
+    <a href="https://github.com/Eduardo79Silva/stm32-edge-ai">
+      <img src="public/sine_model.gif" alt="SineModel" width="30%" height="15%">
+    </a>
+    <br />
+    <br />
+    Neural Network infering sine wave loop bare-metal in a Cortex-M4
+  </p>
+
+</div>
+
+<br />
+
 ### 2. Manually controlled green LED
 
 The onboard button (B1) triggers an EXTI interrupt that currently toggles LD2 and sends a UART message.
