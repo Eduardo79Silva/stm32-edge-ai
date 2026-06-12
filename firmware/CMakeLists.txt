@@ -53,12 +53,16 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+    lib
+    lib/third_party/flatbuffers/include
+    lib/third_party/gemmlowp
+    lib/third_party/kissfft
+    lib/third_party/ruy
 )
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
+    TF_LITE_STATIC_MEMORY
 )
 
 # Remove wrong libob.a library dependency when using cpp files
@@ -67,6 +71,5 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
-
-    # Add user defined libraries
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/libtensorflow-microlite.a
 )
