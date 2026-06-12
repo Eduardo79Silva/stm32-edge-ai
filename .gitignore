@@ -59,7 +59,6 @@ build/
 
 # ML models folders
 models/
-tflm_tree/
 
 # STM32CubeIDE generated / vendor files
 firmware/Drivers/
