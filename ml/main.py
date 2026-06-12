@@ -99,6 +99,10 @@ def main():
     plt.legend()
     plt.show()
 
+    # Create model path if it does not exist
+    if not os.path.isdir(MODEL_FILE_DIR):
+        os.makedirs(MODEL_FILE_DIR)
+
     # Save Keras model
     sine_model.save(f"{MODEL_FILE_DIR}sine_model.keras")
 
@@ -107,9 +111,6 @@ def main():
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     sine_tflite_model = converter.convert()
 
-    # Create model path if it does not exist
-    if not os.path.isdir(MODEL_FILE_DIR):
-        os.makedirs(MODEL_FILE_DIR)
 
     # Save as .tflite file
     with open(f"{MODEL_FILE_DIR}{MODEL_FILE_NAME}.tflite", "wb") as file:
