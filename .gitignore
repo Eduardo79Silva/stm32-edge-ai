@@ -62,6 +62,7 @@ models/
 
 # STM32CubeIDE generated / vendor files
 firmware/Drivers/
+firmware/lib
 Drivers/
 *.ioc.bak
 Debug/
