@@ -16,7 +16,11 @@ The initial project is a sine wave approximator: a small dense network trained i
 
 ## Projects
 
-### 1. Sine Wave Approximator
+### 1. Manually controlled green LED (Done - moved on)
+
+The onboard button (B1) triggers an EXTI interrupt that currently toggles LD2 and sends a UART message.
+
+### 2. Sine Wave Approximator (Currently done)
 
 A 3-layer dense network (`32 → 16 → 1`, ReLU activations) trained on noisy `sin(x)` samples over `[0, 2π]`. After training, the model is:
 
@@ -38,11 +42,8 @@ A 3-layer dense network (`32 → 16 → 1`, ReLU activations) trained on noisy `
 
 <br />
 
-### 2. Manually controlled green LED
 
-The onboard button (B1) triggers an EXTI interrupt that currently toggles LD2 and sends a UART message.
-
-### 3. Embedded inference model for gesture classification (goal)
+### 3. Embedded inference model for gesture classification (Next phase)
 
 Deploy a model trained on host that interacts with sensors to detect specific gestures.
 
@@ -54,23 +55,52 @@ Deploy a model trained on host that interacts with sensors to detect specific ge
 - Python 3.10+ with `tensorflow`, `numpy`, `matplotlib`
 - A serial terminal (e.g. `minicom`, `picocom`, PuTTY) at **115200 8N1**
 
-### Training the Model
+## Usage
+
+### 1. Train and convert the model
 
 ```bash
 cd ml
-pip install tensorflow numpy matplotlib
-python main.py
+python3 main.py
 ```
 
-This produces `models/sine_model.tflite` and `models/sine_model.h`.
+This generates `models/sine_model.tflite` and `models/sine_model.h`.
 
-### Flashing the Firmware
+### 2. Build the firmware
 
-1. Open `firmware/` as an STM32CubeIDE project.
-2. Copy `models/sine_model.h` into `firmware/Core/Inc/`.
-3. Build and flash via the IDE (or `st-flash` if using the open-source toolchain).
-4. Connect a serial terminal to the ST-LINK virtual COM port at 115200 baud.
-5. Press the blue B1 button: the LED toggles and a message appears on UART.
+```bash
+cd firmware
+cmake --preset Debug
+cmake --build --preset Debug -j$(nproc)
+```
+
+### 3. Flash the firmware
+
+```bash
+openocd -f interface/stlink.cfg -f target/stm32l4x.cfg \
+  -c "program /path/to/repository/firmware/build/Debug/stm32-blinky.elf verify reset exit"
+```
+
+### 4. Monitor UART output
+
+Find your serial port:
+
+```bash
+ls /dev/tty* | grep -E "ACM|USB"
+```
+
+Connect via minicom at 115200 baud:
+
+```bash
+minicom -D /dev/ttyACM0 -b 115200
+```
+
+You should see x and predicted sin(x) values streaming:
+
+```
+x: 0.0000, y: 0.0401
+x: 0.0500, y: 0.0703
+```
 
 ## References
 
