@@ -25,15 +25,8 @@
 
 #include "sine_model.h"
 #include "tensorflow/lite/core/c/common.h"
-#include "tensorflow/lite/kernels/internal/compatibility.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
-#include "tensorflow/lite/micro/micro_log.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
-#include "tensorflow/lite/micro/micro_profiler.h"
-#include "tensorflow/lite/micro/micro_resource_variable.h"
-#include "tensorflow/lite/micro/recording_micro_allocator.h"
-#include "tensorflow/lite/micro/recording_micro_interpreter.h"
-#include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include <cstdint>
 /* USER CODE END Includes */
