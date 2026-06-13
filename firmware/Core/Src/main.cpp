@@ -21,7 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 #include "sine_model.h"
 #include "tensorflow/lite/core/c/common.h"
@@ -141,6 +143,11 @@ int main(void) {
     float pwm = 999 * y_clamp;
 
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (uint32_t)pwm);
+
+    char buf[64];
+    snprintf(buf, sizeof(buf), "x: %.4f, y: %.4f\r\n", input, y_pred);
+    HAL_UART_Transmit(&huart2, reinterpret_cast<uint8_t *>(buf), strlen(buf),
+                      HAL_MAX_DELAY);
     HAL_Delay(10);
 
     input += increment;
