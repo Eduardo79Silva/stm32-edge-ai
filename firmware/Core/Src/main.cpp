@@ -25,11 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "sine_model.h"
-#include "tensorflow/lite/core/c/common.h"
-#include "tensorflow/lite/micro/micro_interpreter.h"
-#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
-#include "tensorflow/lite/schema/schema_generated.h"
+#include "stm32l4xx_hal_i2c.h"
 #include <cstdint>
 /* USER CODE END Includes */
 
@@ -49,21 +45,13 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-SMBUS_HandleTypeDef hsmbus1;
+I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-namespace {
-using SineOpResolver = tflite::MicroMutableOpResolver<1>;
-
-TfLiteStatus RegisterOps(SineOpResolver &op_resolver) {
-  TF_LITE_ENSURE_STATUS(op_resolver.AddFullyConnected());
-  return kTfLiteOk;
-}
-} // namespace
 
 /* USER CODE END PV */
 
@@ -72,7 +60,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_I2C1_SMBUS_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -89,10 +77,6 @@ static void MX_I2C1_SMBUS_Init(void);
 int main(void) {
 
   /* USER CODE BEGIN 1 */
-  float input = 0.0f;
-
-  float increment = 0.05f;
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -116,45 +100,49 @@ int main(void) {
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_TIM2_Init();
-  MX_I2C1_SMBUS_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  const tflite::Model *model = tflite::GetModel(sine_model);
-  SineOpResolver op_resolver;
-  RegisterOps(op_resolver);
+  uint8_t who_am_i = 0;
+  HAL_I2C_Mem_Read(&hi2c1, 0x68 << 1, 0x75, I2C_MEMADD_SIZE_8BIT, &who_am_i, 1,
+                   HAL_MAX_DELAY);
 
-  constexpr int kTensorArenaSize = 3000;
-  uint8_t tensor_arena[kTensorArenaSize];
+  char buf[64];
+  HAL_StatusTypeDef status =
+      HAL_I2C_Mem_Read(&hi2c1, 0x68 << 1, 0x75, I2C_MEMADD_SIZE_8BIT, &who_am_i,
+                       1, HAL_MAX_DELAY);
+  snprintf(buf, sizeof(buf), "WHO_AM_I: 0x%02X, status: %d\r\n", who_am_i,
+           status);
+  HAL_UART_Transmit(&huart2, reinterpret_cast<uint8_t *>(buf), strlen(buf),
+                    HAL_MAX_DELAY);
 
-  tflite::MicroInterpreter interpreter(model, op_resolver, tensor_arena,
-                                       kTensorArenaSize);
-  TF_LITE_ENSURE_STATUS(interpreter.AllocateTensors());
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  uint8_t wake_data = 0x00;
+  HAL_StatusTypeDef wake_status =
+      HAL_I2C_Mem_Write(&hi2c1, 0x68 << 1, 0x6B, I2C_MEMADD_SIZE_8BIT,
+                        &wake_data, 1, HAL_MAX_DELAY);
+  snprintf(buf, sizeof(buf), "wake: %d\r\n", wake_status);
+  HAL_UART_Transmit(&huart2, reinterpret_cast<uint8_t *>(buf), strlen(buf),
+                    HAL_MAX_DELAY);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
-    if (input >= 2 * M_PI)
-      input = 0;
+    uint8_t raw[6];
+    status = HAL_I2C_Mem_Read(&hi2c1, 0x68 << 1, 0x3B, I2C_MEMADD_SIZE_8BIT,
+                              raw, 6, HAL_MAX_DELAY);
 
-    interpreter.input(0)->data.f[0] = input;
+    int16_t accel_x = (int16_t)(raw[0] << 8 | raw[1]);
+    int16_t accel_y = (int16_t)(raw[2] << 8 | raw[3]);
+    int16_t accel_z = (int16_t)(raw[4] << 8 | raw[5]);
 
-    TF_LITE_ENSURE_STATUS(interpreter.Invoke());
-    float y_pred = interpreter.output(0)->data.f[0];
-
-    float y_clamp = (y_pred + 1) / 2;
-    float pwm = 999 * y_clamp;
-
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (uint32_t)pwm);
-
-    char buf[64];
-    snprintf(buf, sizeof(buf), "x: %.4f, y: %.4f\r\n", input, y_pred);
+    snprintf(buf, sizeof(buf), "X: %d, Y: %d, Z: %d, status: %d\r\n", accel_x,
+             accel_y, accel_z, status);
     HAL_UART_Transmit(&huart2, reinterpret_cast<uint8_t *>(buf), strlen(buf),
                       HAL_MAX_DELAY);
-    HAL_Delay(10);
+    HAL_Delay(100);
 
-    input += increment;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -212,7 +200,7 @@ void SystemClock_Config(void) {
  * @param None
  * @retval None
  */
-static void MX_I2C1_SMBUS_Init(void) {
+static void MX_I2C1_Init(void) {
 
   /* USER CODE BEGIN I2C1_Init 0 */
 
@@ -221,20 +209,28 @@ static void MX_I2C1_SMBUS_Init(void) {
   /* USER CODE BEGIN I2C1_Init 1 */
 
   /* USER CODE END I2C1_Init 1 */
-  hsmbus1.Instance = I2C1;
-  hsmbus1.Init.Timing = 0x10D19CE4;
-  hsmbus1.Init.AnalogFilter = SMBUS_ANALOGFILTER_ENABLE;
-  hsmbus1.Init.OwnAddress1 = 2;
-  hsmbus1.Init.AddressingMode = SMBUS_ADDRESSINGMODE_7BIT;
-  hsmbus1.Init.DualAddressMode = SMBUS_DUALADDRESS_DISABLE;
-  hsmbus1.Init.OwnAddress2 = 0;
-  hsmbus1.Init.OwnAddress2Masks = SMBUS_OA2_NOMASK;
-  hsmbus1.Init.GeneralCallMode = SMBUS_GENERALCALL_DISABLE;
-  hsmbus1.Init.NoStretchMode = SMBUS_NOSTRETCH_DISABLE;
-  hsmbus1.Init.PacketErrorCheckMode = SMBUS_PEC_DISABLE;
-  hsmbus1.Init.PeripheralMode = SMBUS_PERIPHERAL_MODE_SMBUS_SLAVE;
-  hsmbus1.Init.SMBusTimeout = 0x000083D0;
-  if (HAL_SMBUS_Init(&hsmbus1) != HAL_OK) {
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.Timing = 0x10D19CE4;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK) {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+   */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK) {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+   */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN I2C1_Init 2 */
