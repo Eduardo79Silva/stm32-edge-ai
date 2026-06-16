@@ -3,7 +3,6 @@ import os
 import numpy as np
 import tensorflow as tf
 
-
 SAMPLE_SIZE = 1_000
 
 TRAIN_RATIO = 0.7
