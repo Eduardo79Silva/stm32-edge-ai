@@ -3,6 +3,11 @@ import os
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Conv1D
+from keras.layers import MaxPooling1D
+from keras.layers import GlobalAveragePooling1D
 from pathlib import Path
 
 SAMPLE_SIZE = 1_000
@@ -19,7 +24,7 @@ MODEL_FILE_DIR = "../models/"
 C_HEADER_DIR = "../models/"
 PI = np.pi
 
-GESTURE_MAPPING = {"Clapping": 1, "Fist Making": 2, "Thumb Up": 3, "Wrist Flexion": 4}
+GESTURE_MAPPING = {"Clapping": 0, "Fist Making": 1, "Thumb Up": 2, "Wrist Flexion": 3}
 
 
 def count_dirs_pathlib(path):
@@ -72,6 +77,33 @@ def main():
     print(f"y_test shape: {np.array(y_test).shape}")
     print(f"X_val shape: {np.array(X_val).shape}")
     print(f"y_val shape: {np.array(y_val).shape}")
+
+    model = Sequential()
+
+    model.add(
+        Conv1D(
+            filters=32,
+            kernel_size=3,
+            activation="relu",
+            input_shape=(250, 6),
+        )
+    )
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(Conv1D(filters=64, kernel_size=7, activation="relu"))
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(GlobalAveragePooling1D())
+    model.add(Dense(4, activation="softmax"))
+    model.compile(
+        loss="sparse_categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
+    )
+
+    model.summary()
+
+    history = model.fit(
+        X_train, y_train, epochs=50, batch_size=32, validation_data=(X_val, y_val)
+    )
+
+    print(history)
 
 
 if __name__ == "__main__":
