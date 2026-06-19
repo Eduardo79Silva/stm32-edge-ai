@@ -3,6 +3,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Conv1D
@@ -18,9 +19,9 @@ VAL_RATIO = 0.1
 
 DATASET_DIR = "./datasets/HGAG-DATA/HGAG-DATA1"
 
-
 MODEL_FILE_NAME = "hgag_classifier"
 MODEL_FILE_DIR = "../models/"
+MODEL_PATH = f"{MODEL_FILE_DIR}gesture_model.keras"
 C_HEADER_DIR = "../models/"
 PI = np.pi
 
@@ -59,6 +60,7 @@ def main():
 
     print(f"X shape: {X.shape}")
     print(f"y shape: {y.shape}")
+    print(y[0], y[2150], y[4300], y[6450])
 
     unique, counts = np.unique(y, return_counts=True)
     print(dict(zip(unique, counts)))
@@ -78,32 +80,40 @@ def main():
     print(f"X_val shape: {np.array(X_val).shape}")
     print(f"y_val shape: {np.array(y_val).shape}")
 
-    model = Sequential()
+    if os.path.exists(MODEL_PATH):
+        model = tf.keras.models.load_model(MODEL_PATH)
+    else:
+        model = Sequential()
 
-    model.add(
-        Conv1D(
-            filters=32,
-            kernel_size=3,
-            activation="relu",
-            input_shape=(250, 6),
+        model.add(
+            Conv1D(
+                filters=32,
+                kernel_size=3,
+                activation="relu",
+                input_shape=(250, 6),
+            )
         )
-    )
-    model.add(MaxPooling1D(pool_size=2))
-    model.add(Conv1D(filters=64, kernel_size=7, activation="relu"))
-    model.add(MaxPooling1D(pool_size=2))
-    model.add(GlobalAveragePooling1D())
-    model.add(Dense(4, activation="softmax"))
-    model.compile(
-        loss="sparse_categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
-    )
+        model.add(MaxPooling1D(pool_size=2))
+        model.add(Conv1D(filters=64, kernel_size=7, activation="relu"))
+        model.add(MaxPooling1D(pool_size=2))
+        model.add(GlobalAveragePooling1D())
+        model.add(Dense(4, activation="softmax"))
+        model.compile(
+            loss="sparse_categorical_crossentropy",
+            optimizer="adam",
+            metrics=["accuracy"],
+        )
 
-    model.summary()
+        model.summary()
 
-    history = model.fit(
-        X_train, y_train, epochs=50, batch_size=32, validation_data=(X_val, y_val)
-    )
+        history = model.fit(
+            X_train, y_train, epochs=50, batch_size=32, validation_data=(X_val, y_val)
+        )
 
-    print(history)
+        model.save(MODEL_PATH)
+
+    _, test_accuracy = model.evaluate(X_test, y_test)
+    print(f"Test accuracy: {test_accuracy:.4f}")
 
 
 if __name__ == "__main__":
