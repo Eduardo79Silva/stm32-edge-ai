@@ -115,6 +115,45 @@ def main():
     _, test_accuracy = model.evaluate(X_test, y_test)
     print(f"Test accuracy: {test_accuracy:.4f}")
 
+    X_train = np.array(X_train)
+
+    def representative_dataset_gen():
+        for i in range(100):
+            sample = X_train[i : i + 1].astype(np.float32)
+            yield [sample]
+
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.representative_dataset = representative_dataset_gen
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = tf.int8
+    converter.inference_output_type = tf.int8
+    tflite_model = converter.convert()
+
+    with open(f"{MODEL_FILE_DIR}{MODEL_FILE_NAME}.tflite", "wb") as file:
+        file.write(tflite_model)
+
+    tflite_model_split_line = np.array_split(
+        [format(hex_value, "#04x") for hex_value in tflite_model],
+        len(tflite_model) // 8,
+    )
+
+    if not os.path.isdir(C_HEADER_DIR):
+        os.makedirs(C_HEADER_DIR)
+
+    open(f"{C_HEADER_DIR}{MODEL_FILE_NAME.lower()}.h", "w").write(f"""
+#ifndef {MODEL_FILE_NAME.upper()}_H
+#define {MODEL_FILE_NAME.upper()}_H
+
+    const unsigned int {MODEL_FILE_NAME.lower()}_len = {len(tflite_model)};
+
+    const unsigned char {MODEL_FILE_NAME.lower()}[{len(tflite_model)}] = {{
+        {",\n    ".join([", ".join(line) for line in tflite_model_split_line])}
+    }};
+
+#endif // {MODEL_FILE_NAME.upper()}_H
+    """)
+
 
 if __name__ == "__main__":
     main()
