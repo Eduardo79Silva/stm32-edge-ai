@@ -1,7 +1,9 @@
 import os
 
+from scipy import signal
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from keras.models import Sequential
 from keras.layers import Dense
@@ -179,6 +181,34 @@ def main():
             correct += 1
 
     print(f"Quantized model accuracy: {correct / len(X_test):.4f}")
+    sos = signal.butter(4, [30, 90], "bandpass", fs=200, output="sos")
+    print(sos)
+
+    sos = np.array(sos)
+
+    cmsis_sos = np.delete(sos, 3, axis=1)
+    cmsis_sos[:, -1] = np.negative(cmsis_sos[:, -1])
+    cmsis_sos[:, -2] = np.negative(cmsis_sos[:, -2])
+
+    print("const float32_t filter_coeffs[20] = {")
+    for row in cmsis_sos:
+        print(f"    {row[0]}f, {row[1]}f, {row[2]}f, {row[3]}f, {row[4]}f,")
+    print("};")
+
+    w, h = signal.freqz_sos(sos, worN=1024, fs=200)
+    h_db = 20 * np.log10(np.abs(h))
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(w, h_db)
+    plt.axvline(x=30, color="r", linestyle="--", label="30Hz")
+    plt.axvline(x=90, color="g", linestyle="--", label="90Hz")
+    plt.xlabel("Frequency (Hz)")
+    plt.ylabel("Magnitude (dB)")
+    plt.title("Butterworth Bandpass Filter 30-90Hz")
+    plt.legend()
+    plt.grid(True)
+    plt.ylim(-100, 5)
+    plt.show()
 
 
 if __name__ == "__main__":
