@@ -3,7 +3,6 @@ import os
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Conv1D
@@ -106,7 +105,7 @@ def main():
 
         model.summary()
 
-        history = model.fit(
+        model.fit(
             X_train, y_train, epochs=50, batch_size=32, validation_data=(X_val, y_val)
         )
 
@@ -116,11 +115,14 @@ def main():
     print(f"Test accuracy: {test_accuracy:.4f}")
 
     X_train = np.array(X_train)
+    X_test = np.array(X_test)
+
+    print(f"Max: {np.max(X_train)}  Min: {np.min(X_train)}")
 
     def representative_dataset_gen():
-        for i in range(100):
-            sample = X_train[i : i + 1].astype(np.float32)
-            yield [sample]
+        idx = np.random.choice(len(X_train), 1000, replace=False)
+        for i in idx:
+            yield [X_train[i : i + 1].astype(np.float32)]
 
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -153,6 +155,30 @@ def main():
 
 #endif // {MODEL_FILE_NAME.upper()}_H
     """)
+
+    interpreter = tf.lite.Interpreter(
+        model_path=f"{MODEL_FILE_DIR}{MODEL_FILE_NAME}.tflite"
+    )
+    interpreter.allocate_tensors()
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    params = input_details[0]["quantization_parameters"]
+    scale = params["scales"][0]
+    zero_point = params["zero_points"][0]
+
+    correct = 0
+    for i in range(len(X_test)):
+        sample = X_test[i : i + 1].astype(np.float32)
+        sample_int8 = np.round(sample / scale + zero_point)
+        sample_int8 = np.clip(sample_int8, -128, 127).astype(np.int8)
+        interpreter.set_tensor(input_details[0]["index"], sample_int8)
+        interpreter.invoke()
+        output = interpreter.get_tensor(output_details[0]["index"])
+        if np.argmax(output) == y_test[i]:
+            correct += 1
+
+    print(f"Quantized model accuracy: {correct / len(X_test):.4f}")
 
 
 if __name__ == "__main__":
