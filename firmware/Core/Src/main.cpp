@@ -25,7 +25,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "hgag_classifier.h"
 #include "stm32l4xx_hal_i2c.h"
+#include "tensorflow/lite/core/c/common.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#include "tensorflow/lite/schema/schema_generated.h"
 #include <cstdint>
 /* USER CODE END Includes */
 
@@ -52,6 +57,21 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+
+namespace {
+using HgagOpResolver = tflite::MicroMutableOpResolver<7>;
+
+TfLiteStatus RegisterOps(HgagOpResolver &op_resolver) {
+  TF_LITE_ENSURE_STATUS(op_resolver.AddFullyConnected());
+  TF_LITE_ENSURE_STATUS(op_resolver.AddExpandDims());
+  TF_LITE_ENSURE_STATUS(op_resolver.AddReshape());
+  TF_LITE_ENSURE_STATUS(op_resolver.AddMean());
+  TF_LITE_ENSURE_STATUS(op_resolver.AddSoftmax());
+  TF_LITE_ENSURE_STATUS(op_resolver.AddMaxPool2D());
+  TF_LITE_ENSURE_STATUS(op_resolver.AddConv2D());
+  return kTfLiteOk;
+}
+} // namespace
 
 /* USER CODE END PV */
 
