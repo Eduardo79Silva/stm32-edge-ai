@@ -39,6 +39,11 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+# CMSIS-DSP
+set(CMSISCORE ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS)
+set(CMSISDSP_INSTALL OFF)
+add_subdirectory(Drivers/CMSIS-DSP)
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
@@ -60,7 +65,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     lib/third_party/gemmlowp
     lib/third_party/kissfft
     lib/third_party/ruy
-    Drivers/CMSIS-DSP
+    Drivers/CMSIS-DSP/Include
     ../models
 )
 
@@ -75,5 +80,6 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
+    CMSISDSP
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/libtensorflow-microlite.a
 )
