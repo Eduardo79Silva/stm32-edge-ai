@@ -60,6 +60,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     lib/third_party/gemmlowp
     lib/third_party/kissfft
     lib/third_party/ruy
+    Drivers/CMSIS-DSP
     ../models
 )
 

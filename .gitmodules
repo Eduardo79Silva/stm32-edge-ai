@@ -1,3 +1,6 @@
 [submodule "tflite-micro"]
 	path = tflite-micro
 	url = https://github.com/tensorflow/tflite-micro.git
+[submodule "firmware/Drivers/CMSIS-DSP"]
+	path = firmware/Drivers/CMSIS-DSP
+	url = https://github.com/ARM-software/CMSIS-DSP.git
