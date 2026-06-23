@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "hgag_classifier.h"
+#include "stm32l4xx_hal_def.h"
 #include "stm32l4xx_hal_i2c.h"
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -144,24 +145,55 @@ int main(void) {
   HAL_UART_Transmit(&huart2, reinterpret_cast<uint8_t *>(buf), strlen(buf),
                     HAL_MAX_DELAY);
 
+  uint8_t data = 0x04;
+  HAL_I2C_Mem_Write(&hi2c1, 0x68 << 1, 0x19, I2C_MEMADD_SIZE_8BIT, &data, 1,
+                    HAL_MAX_DELAY);
+
+  uint8_t dlpf_data = 0x01;
+  HAL_I2C_Mem_Write(&hi2c1, 0x68 << 1, 0x1A, I2C_MEMADD_SIZE_8BIT, &dlpf_data,
+                    1, HAL_MAX_DELAY);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
-    uint8_t raw[6];
+    uint8_t raw_accel[6];
     status = HAL_I2C_Mem_Read(&hi2c1, 0x68 << 1, 0x3B, I2C_MEMADD_SIZE_8BIT,
-                              raw, 6, HAL_MAX_DELAY);
+                              raw_accel, 6, HAL_MAX_DELAY);
 
-    int16_t accel_x = (int16_t)(raw[0] << 8 | raw[1]);
-    int16_t accel_y = (int16_t)(raw[2] << 8 | raw[3]);
-    int16_t accel_z = (int16_t)(raw[4] << 8 | raw[5]);
+    float accel_x = (int16_t)(raw_accel[0] << 8 | raw_accel[1]);
+    float accel_y = (int16_t)(raw_accel[2] << 8 | raw_accel[3]);
+    float accel_z = (int16_t)(raw_accel[4] << 8 | raw_accel[5]);
 
-    snprintf(buf, sizeof(buf), "X: %d, Y: %d, Z: %d, status: %d\r\n", accel_x,
+    accel_x /= 16384.0;
+    accel_y /= 16384.0;
+    accel_z /= 16384.0;
+
+    snprintf(buf, sizeof(buf),
+             "ACCEL -- X: %.4f, Y: %.4f, Z: %.4f, status: %d\r\n", accel_x,
              accel_y, accel_z, status);
     HAL_UART_Transmit(&huart2, reinterpret_cast<uint8_t *>(buf), strlen(buf),
                       HAL_MAX_DELAY);
-    HAL_Delay(100);
+
+    uint8_t raw_gyro[6];
+    status = HAL_I2C_Mem_Read(&hi2c1, 0x68 << 1, 0x43, I2C_MEMADD_SIZE_8BIT,
+                              raw_gyro, 6, HAL_MAX_DELAY);
+
+    float gyro_x = (int16_t)(raw_gyro[0] << 8 | raw_gyro[1]);
+    float gyro_y = (int16_t)(raw_gyro[2] << 8 | raw_gyro[3]);
+    float gyro_z = (int16_t)(raw_gyro[4] << 8 | raw_gyro[5]);
+
+    gyro_x /= 131.0;
+    gyro_y /= 131.0;
+    gyro_z /= 131.0;
+
+    snprintf(buf, sizeof(buf),
+             "GYRO -- X: %.4f, Y: %.4f, Z: %.4f, status: %d\r\n", gyro_x,
+             gyro_y, gyro_z, status);
+    HAL_UART_Transmit(&huart2, reinterpret_cast<uint8_t *>(buf), strlen(buf),
+                      HAL_MAX_DELAY);
+    HAL_Delay(5);
 
     /* USER CODE END WHILE */
 
