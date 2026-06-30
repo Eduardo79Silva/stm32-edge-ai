@@ -25,6 +25,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "arm_math.h"
+#include "dsp/filtering_functions.h"
 #include "hgag_classifier.h"
 #include "stm32l4xx_hal_def.h"
 #include "stm32l4xx_hal_i2c.h"
@@ -72,6 +74,44 @@ TfLiteStatus RegisterOps(HgagOpResolver &op_resolver) {
   TF_LITE_ENSURE_STATUS(op_resolver.AddConv2D());
   return kTfLiteOk;
 }
+
+const float32_t filter_coeffs[20] = {
+    0.16717926860848994f,
+    -0.3343585372169799f,
+    0.16717926860848994f,
+    0.5418421547938043f,
+    -0.12428811601288457f,
+    1.0f,
+    2.0f,
+    1.0f,
+    -1.4203516303076948f,
+    -0.5196607446342449f,
+    1.0f,
+    -2.0f,
+    1.0f,
+    0.9066302244462777f,
+    -0.5744851222349661f,
+    1.0f,
+    2.0f,
+    1.0f,
+    -1.7198734191690779f,
+    -0.811727845882331f,
+};
+
+float32_t accel_x_state[8];
+float32_t accel_y_state[8];
+float32_t accel_z_state[8];
+float32_t gyro_x_state[8];
+float32_t gyro_y_state[8];
+float32_t gyro_z_state[8];
+
+arm_biquad_cascade_df2T_instance_f32 accel_x_filter;
+arm_biquad_cascade_df2T_instance_f32 accel_y_filter;
+arm_biquad_cascade_df2T_instance_f32 accel_z_filter;
+arm_biquad_cascade_df2T_instance_f32 gyro_x_filter;
+arm_biquad_cascade_df2T_instance_f32 gyro_y_filter;
+arm_biquad_cascade_df2T_instance_f32 gyro_z_filter;
+
 } // namespace
 
 /* USER CODE END PV */
@@ -124,6 +164,19 @@ int main(void) {
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+  arm_biquad_cascade_df2T_init_f32(&accel_x_filter, 4, filter_coeffs,
+                                   accel_x_state);
+  arm_biquad_cascade_df2T_init_f32(&accel_y_filter, 4, filter_coeffs,
+                                   accel_y_state);
+  arm_biquad_cascade_df2T_init_f32(&accel_z_filter, 4, filter_coeffs,
+                                   accel_z_state);
+  arm_biquad_cascade_df2T_init_f32(&gyro_x_filter, 4, filter_coeffs,
+                                   gyro_x_state);
+  arm_biquad_cascade_df2T_init_f32(&gyro_y_filter, 4, filter_coeffs,
+                                   gyro_y_state);
+  arm_biquad_cascade_df2T_init_f32(&gyro_z_filter, 4, filter_coeffs,
+                                   gyro_z_state);
+
   uint8_t who_am_i = 0;
   HAL_I2C_Mem_Read(&hi2c1, 0x68 << 1, 0x75, I2C_MEMADD_SIZE_8BIT, &who_am_i, 1,
                    HAL_MAX_DELAY);
@@ -170,6 +223,10 @@ int main(void) {
     accel_y /= 16384.0;
     accel_z /= 16384.0;
 
+    arm_biquad_cascade_df2T_f32(&accel_x_filter, &accel_x, &accel_x, 1);
+    arm_biquad_cascade_df2T_f32(&accel_y_filter, &accel_y, &accel_y, 1);
+    arm_biquad_cascade_df2T_f32(&accel_z_filter, &accel_z, &accel_z, 1);
+
     snprintf(buf, sizeof(buf),
              "ACCEL -- X: %.4f, Y: %.4f, Z: %.4f, status: %d\r\n", accel_x,
              accel_y, accel_z, status);
@@ -187,6 +244,10 @@ int main(void) {
     gyro_x /= 131.0;
     gyro_y /= 131.0;
     gyro_z /= 131.0;
+
+    arm_biquad_cascade_df2T_f32(&gyro_x_filter, &gyro_x, &gyro_x, 1);
+    arm_biquad_cascade_df2T_f32(&gyro_y_filter, &gyro_y, &gyro_y, 1);
+    arm_biquad_cascade_df2T_f32(&gyro_z_filter, &gyro_z, &gyro_z, 1);
 
     snprintf(buf, sizeof(buf),
              "GYRO -- X: %.4f, Y: %.4f, Z: %.4f, status: %d\r\n", gyro_x,
